@@ -1,4 +1,7 @@
-#!/bin/bash -x
+#!/bin/bash
+
+set -euo pipefail
+set -x
 
 # The following parameters must be specified:
 #   build_number - specifies the number of JetBrainsRuntime build
@@ -35,6 +38,7 @@ function do_configure {
     --with-boot-jdk=$BOOT_JDK \
     --disable-ccache \
     --enable-cds=yes \
+    $STATIC_CONF_ARGS \
     $REPRODUCIBLE_BUILD_OPTS \
     || do_exit $?
 }
@@ -44,6 +48,8 @@ function create_image_bundle {
   __arch_name=$2
   __modules_path=$3
   __modules=$4
+
+  fastdebug_infix=''
 
   [ "$bundle_type" == "fd" ] && [ "$__arch_name" == "$JBRSDK_BUNDLE" ] && __bundle_name=$__arch_name && fastdebug_infix="fastdebug-"
 
@@ -79,7 +85,7 @@ case "$bundle_type" in
     ;;
 esac
 
-if [ -z "$INC_BUILD" ]; then
+if [ -z "${INC_BUILD:-}" ]; then
   do_configure || do_exit $?
   if [ $do_maketest -eq 1 ]; then
     make LOG=info CONF=$RELEASE_NAME clean images test-image || do_exit $?
@@ -105,9 +111,11 @@ if [ "$bundle_type" == "jcef" ] || [ "$bundle_type" == "fd" ]; then
   cp $JCEF_PATH/jmods/* ${JSDK_MODS_DIR} # $JSDK/jmods is not unchanged
 
   jbr_name_postfix="_${bundle_type}"
+else
+  jbr_name_postfix=""
 fi
 
-# create runtime image bundlef
+# create runtime image bundle
 modules=$(xargs < jb/project/tools/common/modules.list | sed s/" "//g) || do_exit $?
 modules+=",jdk.crypto.mscapi"
 create_image_bundle "jbr${jbr_name_postfix}" "jbr" $JSDK_MODS_DIR "$modules" || do_exit $?

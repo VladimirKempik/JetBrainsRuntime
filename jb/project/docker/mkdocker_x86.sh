@@ -1,14 +1,11 @@
-#!/bin/bash
+#!/bin/bash -x
 
-set -euo pipefail
-set -x
-
-# This script creates a Docker image suitable for building musl-x64 variant
+# This script creates a Docker image suitable for building x86 variant
 # of the JetBrains Runtime version 17.
 
-BOOT_JDK_REMOTE_FILE=zulu17.32.13-ca-jdk17.0.2-linux_musl_x64.tar.gz
-BOOT_JDK_SHA=bcc5342011bd9f3643372aadbdfa68d47463ff0d8621668a0bdf2910614d95c6
-BOOT_JDK_LOCAL_FILE=boot_jdk_musl_amd64.tar.gz
+BOOT_JDK_REMOTE_FILE=zulu17.34.19-ca-jdk17.0.3-linux_i686.tar.gz
+BOOT_JDK_SHA=1c35c374ba0001e675d6e80819d5be900c4e141636d5e484992a8c550be14481
+BOOT_JDK_LOCAL_FILE=boot_jdk_x86.tar.gz
 
 if [ ! -f $BOOT_JDK_LOCAL_FILE ]; then
     # Obtain "boot JDK" from outside of the container.
@@ -22,7 +19,7 @@ sha256sum -c - <<EOF
 $BOOT_JDK_SHA *$BOOT_JDK_LOCAL_FILE
 EOF
 
-docker build -t jbr17buildenv -f Dockerfile.musl_x64 .
+docker build -t jetbrains/runtime:jbr17env_x86 -f Dockerfile.x86 .
 
 # NB: the resulting container can (and should) be used without the network
 # connection (--network none) during build in order to reduce the chance

@@ -1,4 +1,7 @@
-#!/bin/bash -x
+#!/bin/bash
+
+set -euo pipefail
+set -x
 
 # The following parameters must be specified:
 #   build_number - specifies the number of JetBrainsRuntime build
@@ -22,7 +25,6 @@
 source jb/project/tools/common/scripts/common.sh
 
 JCEF_PATH=${JCEF_PATH:=./jcef_mac}
-architecture=${architecture:=x64}
 BOOT_JDK=${BOOT_JDK:=$(/usr/libexec/java_home -v 16)}
 
 function do_configure {
@@ -44,6 +46,7 @@ function do_configure {
       --with-extra-cflags="-F$(pwd)/Frameworks" \
       --with-extra-cxxflags="-F$(pwd)/Frameworks" \
       --with-extra-ldflags="-F$(pwd)/Frameworks" \
+      $STATIC_CONF_ARGS \
       $REPRODUCIBLE_BUILD_OPTS \
       $WITH_ZIPPED_NATIVE_DEBUG_SYMBOLS \
       || do_exit $?
@@ -61,6 +64,7 @@ function do_configure {
       --with-boot-jdk="$BOOT_JDK" \
       --with-macosx-version-max="${MACOSX_VERSION_MAX:="10.12.00"}" \
       --enable-cds=yes \
+      $STATIC_CONF_ARGS \
       $REPRODUCIBLE_BUILD_OPTS \
       $WITH_ZIPPED_NATIVE_DEBUG_SYMBOLS \
       || do_exit $?
@@ -73,11 +77,13 @@ function create_image_bundle {
   __modules_path=$3
   __modules=$4
 
+  fastdebug_infix=''
+
   tmp=.bundle.$$.tmp
   mkdir "$tmp" || do_exit $?
 
   [ "$bundle_type" == "fd" ] && [ "$__arch_name" == "$JBRSDK_BUNDLE" ] && __bundle_name=$__arch_name && fastdebug_infix="fastdebug-"
-  JBR=${__bundle_name}-${JBSDK_VERSION}-osx-${architecture}-${fastdebug_infix}b${build_number}
+  JBR=${__bundle_name}-${JBSDK_VERSION}-osx-${architecture}-${fastdebug_infix:-}b${build_number}
 
   JRE_CONTENTS=$tmp/$__arch_name/Contents
   mkdir -p "$JRE_CONTENTS" || do_exit $?
@@ -136,7 +142,7 @@ case "$bundle_type" in
     ;;
 esac
 
-if [ -z "$INC_BUILD" ]; then
+if [ -z "${INC_BUILD:-}" ]; then
   do_configure || do_exit $?
   make clean CONF=$RELEASE_NAME || do_exit $?
 fi
@@ -154,6 +160,8 @@ if [ "$bundle_type" == "jcef" ] || [ "$bundle_type" == "fd" ]; then
   cp $JCEF_PATH/jmods/* $JSDK_MODS_DIR # $JSDK/jmods is not changed
 
   jbr_name_postfix="_${bundle_type}"
+else
+  jbr_name_postfix=""
 fi
 
 # create runtime image bundle
