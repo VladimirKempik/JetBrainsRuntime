@@ -17,7 +17,7 @@ else
     echo "boot JDK \"$BOOT_JDK_LOCAL_FILE\" present, skipping download"
 fi
 
-DEVKIT_REMOTE_FILE=sdk-x86_64-linux-gnu-to-riscv64-linux-gnu-20220423.tar.gz
+DEVKIT_REMOTE_FILE=sdk-x86_64-linux-gnu-to-aarch64-linux-gnu-20220423.tar.gz
 DEVKIT_LOCAL_FILE=devkit_host_x64.tar.gz
 
 if [ ! -f $DEVKIT_REMOTE_FILE ]; then

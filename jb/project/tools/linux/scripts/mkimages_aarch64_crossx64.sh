@@ -18,18 +18,18 @@ set -x
 #               to configure
 #               By default JDK_BUILD_NUMBER is set zero
 #   JCEF_PATH - specifies the path to the directory with JCEF binaries.
-#               By default JCEF binaries should be located in ./jcef_linux_riscv64
+#               By default JCEF binaries should be located in ./jcef_linux_aarch64
 
 source jb/project/tools/common/scripts/common.sh
 
-JCEF_PATH=${JCEF_PATH:=./jcef_linux_riscv64}
+JCEF_PATH=${JCEF_PATH:=./jcef_linux_aarch64}
 BUILD_JDK_CONF_NAME="host-build-jdk"
 
 function do_configure {
   sh configure \
     $WITH_DEBUG_LEVEL \
     --with-vendor-name="$VENDOR_NAME" \
-    --openjdk-target=riscv64-unknown-linux-gnu \
+    --openjdk-target=aarch64-linux-gnu \
     --with-devkit="$DEVKIT_PATH" \
     --with-vendor-version-string="$VENDOR_VERSION_STRING" \
     --with-jvm-features=shenandoahgc \
@@ -38,7 +38,6 @@ function do_configure {
     --with-version-opt=b"$build_number" \
     --with-boot-jdk="$BOOT_JDK" \
     --with-build-jdk="$BUILD_JDK" \
-    --disable-warnings-as-errors \
     --enable-cds=yes \
     $STATIC_CONF_ARGS \
     $WITH_ZIPPED_NATIVE_DEBUG_SYMBOLS \
@@ -65,7 +64,7 @@ function create_image_bundle {
   fastdebug_infix=''
 
   [ "$bundle_type" == "fd" ] && [ "$__arch_name" == "$JBRSDK_BUNDLE" ] && __bundle_name=$__arch_name && fastdebug_infix="fastdebug-"
-  JBR=${__bundle_name}-${JBSDK_VERSION}-linux-${libc_type_suffix}riscv64-${fastdebug_infix}b${build_number}
+  JBR=${__bundle_name}-${JBSDK_VERSION}-linux-${libc_type_suffix}aarch64-${fastdebug_infix}b${build_number}
 
   echo Running jlink....
   [ -d "$IMAGES_DIR"/"$__arch_name" ] && rm -rf "${IMAGES_DIR:?}"/"$__arch_name"
@@ -99,7 +98,7 @@ function create_image_bundle {
 }
 
 WITH_DEBUG_LEVEL="--with-debug-level=release"
-RELEASE_NAME=linux-riscv64-server-release
+RELEASE_NAME=linux-aarch64-server-release
 
 case "$bundle_type" in
   "jcef")
@@ -112,7 +111,7 @@ case "$bundle_type" in
   "fd")
     do_reset_changes=1
     WITH_DEBUG_LEVEL="--with-debug-level=fastdebug"
-    RELEASE_NAME=linux-riscv64-server-fastdebug
+    RELEASE_NAME=linux-aarch64-server-fastdebug
     ;;
 esac
 
@@ -152,7 +151,7 @@ else
 fi
 
 # create runtime image bundle
-modules=$(xargs < jb/project/tools/common/modules.list | sed s/"jdk.internal.vm.ci,"//g | sed s/" "//g) || do_exit $?
+modules=$(xargs < jb/project/tools/common/modules.list | sed s/" "//g) || do_exit $?
 create_image_bundle "jbr${jbr_name_postfix}" "jbr" $JSDK_MODS_DIR "$modules" || do_exit $?
 
 # create sdk image bundle
@@ -163,7 +162,7 @@ fi
 create_image_bundle "$JBRSDK_BUNDLE${jbr_name_postfix}" $JBRSDK_BUNDLE $JSDK_MODS_DIR "$modules" || do_exit $?
 
 if [ $do_maketest -eq 1 ]; then
-    JBRSDK_TEST=${JBRSDK_BUNDLE}-${JBSDK_VERSION}-linux-${libc_type_suffix}test-riscv64-b${build_number}
+    JBRSDK_TEST=${JBRSDK_BUNDLE}-${JBSDK_VERSION}-linux-${libc_type_suffix}test-aarch64-b${build_number}
     echo Creating "$JBRSDK_TEST" ...
     [ $do_reset_changes -eq 1 ] && git checkout HEAD jb/project/tools/common/modules.list src/java.desktop/share/classes/module-info.java
     make test-image CONF=$RELEASE_NAME || do_exit $?

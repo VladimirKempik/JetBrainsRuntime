@@ -8,15 +8,29 @@
 FROM ubuntu:jammy
 
 # Install the necessary build tools
-RUN     apt install build-essential autoconf
+RUN	apt-get update
+RUN     apt-get -y install make autoconf git file unzip zip \
+	bash grep tar bzip2 rsync gcc g++ \
+	libx11-dev \
+        libxext-dev \
+        libxrender-dev \
+        libxrandr-dev \
+        libxtst-dev \
+        libxt-dev \
+        libcups2-dev \
+        libasound2-data \
+        libasound2 \
+        libfreetype6 \
+        libfontconfig1-dev \
+        libasound2-dev
 
 # Set up boot JDK for building
 COPY boot_jdk_amd64.tar.gz /jdk17/
-RUN cd /jdk17 && tar --strip-components=1 -xzf boot_jdk_musl_amd64.tar.gz && rm /jdk17/boot_jdk_amd64.tar.gz
+RUN cd /jdk17 && tar --strip-components=1 -xzf boot_jdk_amd64.tar.gz && rm /jdk17/boot_jdk_amd64.tar.gz
 ENV BOOT_JDK=/jdk17
 
-COPY sdk-x86_64-linux-gnu-to-riscv64-linux-gnu-20220423.tar.gz /devkit/
-RUN cd /devkit && tar --strip-components=1 -xzf sdk-x86_64-linux-gnu-to-riscv64-linux-gnu-20220423.tar.gz && rm /devkit/sdk-x86_64-linux-gnu-to-riscv64-linux-gnu-20220423.tar.gz
+COPY devkit_host_x64.tar.gz /devkit/
+RUN cd /devkit && tar --strip-components=1 -xzf devkit_host_x64.tar.gz && rm /devkit/devkit_host_x64.tar.gz
 ENV DEVKIT_PATH=/devkit
 
 RUN git config --global user.email "teamcity@jetbrains.com" && \
