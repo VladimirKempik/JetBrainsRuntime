@@ -40,6 +40,7 @@ function do_configure {
     --with-build-jdk="$BUILD_JDK" \
     --enable-cds=yes \
     $STATIC_CONF_ARGS \
+    $REPRODUCIBLE_BUILD_OPTS \
     $WITH_ZIPPED_NATIVE_DEBUG_SYMBOLS \
     || do_exit $?
 }
