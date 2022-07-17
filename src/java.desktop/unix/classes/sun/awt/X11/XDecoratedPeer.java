@@ -415,6 +415,10 @@ abstract class XDecoratedPeer extends XWindowPeer {
             insets_corrected = true;
             reshape(dimensions, SET_SIZE, false);
         } else if (xe.get_parent() == root) {
+            if (!isReparented()) {
+                // X server on Windows (e.g. Cygwin/X) does perform a no-op reparenting to the root window
+                return;
+            }
             configure_seen = false;
             insets_corrected = false;
 
@@ -1209,7 +1213,7 @@ abstract class XDecoratedPeer extends XWindowPeer {
 
     @Override
     boolean isOverrideRedirect() {
-        return Window.Type.POPUP.equals(getWindowType());
+        return Window.Type.POPUP.equals(getWindowType()) && !XWM.isKDE2();
     }
 
     public boolean requestWindowFocus(long time, boolean timeProvided) {
@@ -1225,7 +1229,8 @@ abstract class XDecoratedPeer extends XWindowPeer {
                        Boolean.valueOf(target == focusedWindow));
         }
 
-        if (!ENABLE_MODAL_TRANSIENTS_CHAIN && modalBlocker != null) {
+        if (!ENABLE_MODAL_TRANSIENTS_CHAIN && modalBlocker != null &&
+                !((Window)target).isAncestorOf(modalBlocker)) {
             ((XBaseWindow)AWTAccessor.getComponentAccessor().getPeer(modalBlocker)).toFront();
             return false;
         }

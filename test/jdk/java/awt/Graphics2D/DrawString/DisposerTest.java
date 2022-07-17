@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, JetBrains s.r.o.. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,39 +21,25 @@
  * questions.
  */
 
+
 /**
  * @test
- * @bug 8266851
+ * @summary Verifies that Disposer does not report any unexpected exceptions.
  * @library /test/lib
- * @build JbrIllegalAccessTest
- * @run testng JbrIllegalAccessTest
- * @summary Make sure that --jbr-illegal-access is working.
+ * @build DrawRotatedStringUsingRotatedFont
+ * @run main DisposerTest
  */
 
-import jdk.test.lib.process.*;
-import org.testng.annotations.*;
+import jdk.test.lib.process.ProcessTools;
+import jdk.test.lib.process.OutputAnalyzer;
 
-/**
- * Make sure that --jbr-illegal-access is working as expected.
- */
-
-@Test
-public class JbrIllegalAccessTest {
-
-    void run(String text, String... vmopts)
-        throws Exception
-    {
-        var outputAnalyzer = ProcessTools
-            .executeTestJava(vmopts)
-            .outputTo(System.out)
-            .errorTo(System.out);
-        outputAnalyzer.shouldNotContain(text);
+public final class DisposerTest {
+    public static void main(String args[]) throws Exception {
+        // Run the test many times in order to increase the likelyhood of the race condition.
+        for (int i = 0; i < 20; ++i) {
+            OutputAnalyzer oa = ProcessTools.executeTestJvm(DrawRotatedStringUsingRotatedFont.class.getName());
+            oa.stderrShouldBeEmpty().shouldHaveExitValue(0);
+        }
     }
-
-    public void testObsolete() throws Exception {
-        run("Unrecognized option: --jbr-illegal-access",
-            "-XX:-IgnoreUnrecognizedVMOptions",
-            "--jbr-illegal-access", "--version");
-    }
-
 }
+

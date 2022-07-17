@@ -53,7 +53,7 @@
 #include "runtime/safepointMechanism.hpp"
 #include "runtime/vm_version.hpp"
 #include "services/management.hpp"
-#include "services/memTracker.hpp"
+#include "services/nmtCommon.hpp"
 #include "utilities/align.hpp"
 #include "utilities/defaultStream.hpp"
 #include "utilities/macros.hpp"
@@ -1337,7 +1337,6 @@ bool Arguments::add_property(const char* prop, PropertyWriteable writeable, Prop
     log_info(cds)("optimized module handling: disabled due to incompatible property: %s=%s", key, value);
   }
   if (strcmp(key, "jdk.module.showModuleResolution") == 0 ||
-      strcmp(key, "jdk.module.illegalAccess") == 0 ||
       strcmp(key, "jdk.module.validation") == 0 ||
       strcmp(key, "java.system.class.loader") == 0) {
     MetaspaceShared::disable_full_module_graph();
@@ -1376,6 +1375,8 @@ bool Arguments::add_property(const char* prop, PropertyWriteable writeable, Prop
       if (old_java_vendor_url_bug != NULL) {
         os::free((void *)old_java_vendor_url_bug);
       }
+    } else if (strcmp(key, "jbr.catch.SIGABRT") == 0) {
+      CatchSIGABRT = (strcmp(value, "true") == 0);
     }
 
     // Create new property and add at the end of the list
@@ -2024,17 +2025,6 @@ bool Arguments::check_vm_args_consistency() {
 
   status = status && check_gc_consistency();
 
-  if (PrintNMTStatistics) {
-#if INCLUDE_NMT
-    if (MemTracker::tracking_level() == NMT_off) {
-#endif // INCLUDE_NMT
-      warning("PrintNMTStatistics is disabled, because native memory tracking is not enabled");
-      PrintNMTStatistics = false;
-#if INCLUDE_NMT
-    }
-#endif
-  }
-
   status = CompilerConfig::check_args_consistency(status);
 #if INCLUDE_JVMCI
   if (status && EnableJVMCI) {
@@ -2132,8 +2122,7 @@ bool Arguments::parse_uintx(const char* value,
 }
 
 bool Arguments::create_module_property(const char* prop_name, const char* prop_value, PropertyInternal internal) {
-  assert(is_internal_module_property(prop_name) ||
-         strcmp(prop_name, "jdk.module.illegalAccess") == 0, "unknown module property: '%s'", prop_name);
+  assert(is_internal_module_property(prop_name), "unknown module property: '%s'", prop_name);
   size_t prop_len = strlen(prop_name) + strlen(prop_value) + 2;
   char* property = AllocateHeap(prop_len, mtArguments);
   int ret = jio_snprintf(property, prop_len, "%s=%s", prop_name, prop_value);
@@ -2505,10 +2494,6 @@ jint Arguments::parse_each_vm_init_arg(const JavaVMInitArgs* args, bool* patch_m
       char version[256];
       JDK_Version::jdk(17).to_string(version, sizeof(version));
       warning("Ignoring option %s; support was removed in %s", option->optionString, version);
-    } else if (match_option(option, "--jbr-illegal-access", &tail)) {
-      if (!create_module_property("jdk.module.illegalAccess", "permit", ExternalProperty)) {
-        return JNI_ENOMEM;
-      }
     // -agentlib and -agentpath
     } else if (match_option(option, "-agentlib:", &tail) ||
           (is_absolute_path = match_option(option, "-agentpath:", &tail))) {
@@ -3779,29 +3764,6 @@ jint Arguments::match_special_option_and_act(const JavaVMInitArgs* args,
       JVMFlag::printFlags(tty, false);
       vm_exit(0);
     }
-    if (match_option(option, "-XX:NativeMemoryTracking", &tail)) {
-#if INCLUDE_NMT
-      // The launcher did not setup nmt environment variable properly.
-      if (!MemTracker::check_launcher_nmt_support(tail)) {
-        warning("Native Memory Tracking did not setup properly, using wrong launcher?");
-      }
-
-      // Verify if nmt option is valid.
-      if (MemTracker::verify_nmt_option()) {
-        // Late initialization, still in single-threaded mode.
-        if (MemTracker::tracking_level() >= NMT_summary) {
-          MemTracker::init();
-        }
-      } else {
-        vm_exit_during_initialization("Syntax error, expecting -XX:NativeMemoryTracking=[off|summary|detail]", NULL);
-      }
-      continue;
-#else
-      jio_fprintf(defaultStream::error_stream(),
-        "Native Memory Tracking is not supported in this VM\n");
-      return JNI_ERR;
-#endif
-    }
 
 #ifndef PRODUCT
     if (match_option(option, "-XX:+PrintFlagsWithComments")) {
@@ -4067,6 +4029,26 @@ jint Arguments::parse(const JavaVMInitArgs* initial_cmd_args) {
   }
   no_shared_spaces("CDS Disabled");
 #endif // INCLUDE_CDS
+
+#if INCLUDE_NMT
+  // Verify NMT arguments
+  const NMT_TrackingLevel lvl = NMTUtil::parse_tracking_level(NativeMemoryTracking);
+  if (lvl == NMT_unknown) {
+    jio_fprintf(defaultStream::error_stream(),
+                "Syntax error, expecting -XX:NativeMemoryTracking=[off|summary|detail]", NULL);
+    return JNI_ERR;
+  }
+  if (PrintNMTStatistics && lvl == NMT_off) {
+    warning("PrintNMTStatistics is disabled, because native memory tracking is not enabled");
+    FLAG_SET_DEFAULT(PrintNMTStatistics, false);
+  }
+#else
+  if (!FLAG_IS_DEFAULT(NativeMemoryTracking) || PrintNMTStatistics) {
+    warning("Native Memory Tracking is not supported in this VM");
+    FLAG_SET_DEFAULT(NativeMemoryTracking, "off");
+    FLAG_SET_DEFAULT(PrintNMTStatistics, false);
+  }
+#endif // INCLUDE_NMT
 
   if (TraceDependencies && VerifyDependencies) {
     if (!FLAG_IS_DEFAULT(TraceDependencies)) {

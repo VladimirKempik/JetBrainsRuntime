@@ -1,5 +1,6 @@
 /*
- * Copyright 2021 JetBrains s.r.o.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021 SAP SE. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -19,30 +20,30 @@
  * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
  * or visit www.oracle.com if you need additional information or have any
  * questions.
+ *
  */
-
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /*
- * @test
+ * This tests NMT by running gtests with NMT enabled.
  *
- * @requires (os.family == "windows")
- *
- * @summary Verifies that listing a mounted Google Drive doesn't throw.
- *
- * @run main GDriveTest
+ * To save time, we just run them for debug builds (where we would catch assertions) and only a selection of tests
+ * (namely, NMT tests themselves, and - for the detail statistics - os tests, since those reserve a lot and stress NMT)
  */
 
-public class GDriveTest {
-    public static void main(String[] args) throws Exception {
-        final Path gdrivePath = Path.of("G:\\");
-        if (Files.exists(gdrivePath)) {
-            try (Stream<Path> stream = Files.list(gdrivePath)) {
-                System.out.println(stream.collect(Collectors.toList()));
-            }
-        }
-    }
-}
+/* @test id=nmt-summary
+ * @summary Run NMT-related gtests with summary statistics
+ * @library /test/lib
+ * @modules java.base/jdk.internal.misc
+ *          java.xml
+ * @requires vm.debug
+ * @run main/native GTestWrapper --gtest_filter=NMT* -XX:NativeMemoryTracking=summary
+ */
+
+/* @test id=nmt-detail
+ * @summary Run NMT-related gtests with detailed statistics
+ * @library /test/lib
+ * @modules java.base/jdk.internal.misc
+ *          java.xml
+ * @requires vm.debug
+ * @run main/native GTestWrapper --gtest_filter=NMT*:os* -XX:NativeMemoryTracking=detail
+ */

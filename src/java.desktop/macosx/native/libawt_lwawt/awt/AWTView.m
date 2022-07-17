@@ -32,6 +32,7 @@
 #import "GeomUtilities.h"
 #import "ThreadUtilities.h"
 #import "JNIUtilities.h"
+#import "jni_util.h"
 #import "PropertiesUtilities.h"
 
 #import <Carbon/Carbon.h>
@@ -1493,8 +1494,24 @@ static jclass jc_CInputMethod = NULL;
 
 /********************************   END NSTextInputClient Protocol   ********************************/
 
+- (void)viewDidChangeBackingProperties {
+    JNIEnv *env = [ThreadUtilities getJNIEnv];
+    static double debugScale = -2.0;
+    if (debugScale == -2.0) { // default debugScale value in SGE is -1.0
+        debugScale = JNU_CallStaticMethodByName(env, NULL, "sun/java2d/SunGraphicsEnvironment",
+                                                "getDebugScale", "()D").d;
+    }
 
-
+    if (self.window.backingScaleFactor > 0 && debugScale < 0) {
+        self.layer.contentsScale = self.window.backingScaleFactor;
+        DECLARE_CLASS(jc_CPlatformView, "sun/lwawt/macosx/CPlatformView");
+        DECLARE_METHOD(deliverChangeBackingProperties, jc_CPlatformView, "deliverChangeBackingProperties", "(F)V");
+        jobject jlocal = (*env)->NewLocalRef(env, m_cPlatformView);
+        (*env)->CallVoidMethod(env, jlocal, deliverChangeBackingProperties, self.window.backingScaleFactor);
+        CHECK_EXCEPTION();
+        (*env)->DeleteLocalRef(env, jlocal);
+    }
+}
 
 @end // AWTView
 

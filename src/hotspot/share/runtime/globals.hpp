@@ -2101,12 +2101,13 @@ const intx ObjectAlignmentInBytes = 8;
           "modules.")                                                       \
           constraint(HotswapAgentConstraintFunc, AfterErgo)
 
-
 // end of RUNTIME_FLAGS
 
 DECLARE_FLAGS(LP64_RUNTIME_FLAGS)
 DECLARE_ARCH_FLAGS(ARCH_FLAGS)
 DECLARE_FLAGS(RUNTIME_FLAGS)
 DECLARE_FLAGS(RUNTIME_OS_FLAGS)
+
+DECLARE_PRODUCT_FLAG(bool, CatchSIGABRT, false);
 
 #endif // SHARE_RUNTIME_GLOBALS_HPP
